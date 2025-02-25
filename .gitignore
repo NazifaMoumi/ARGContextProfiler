@@ -1,0 +1,18 @@
+# Ignore Python cache and bytecode
+__pycache__/
+*.py[cod]
+
+# Ignore your data and results
+data/
+results/
+
+# Ignore logs and SLURM output
+slurm-*.out
+*.log
+
+# Ignore job scripts (if you don't want them tracked)
+ARGCP_job.sh
+
+# Optionally ignore environment/venv directories
+venv/
+.env/
