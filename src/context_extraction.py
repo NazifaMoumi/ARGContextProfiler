@@ -2,7 +2,6 @@
 
 import os
 from itertools import product
-from src.config import OUTPUT_PATH, GENE_COV, RADIUS, OVERLAP, MIN_CONTEXT_LEN
 
 def extract_centered_paths(graph, center_node, fixed_length, ARG_path, overlap):
     centered_paths = []
@@ -30,26 +29,26 @@ def extract_centered_paths(graph, center_node, fixed_length, ARG_path, overlap):
             centered_paths.append([center_node, neighbor])
     return centered_paths
 
-def write_results(ARG, ARG_seq, ARG_path, g1, left_seq_list, right_seq_list, all_paths):
+def write_results(ARG, ARG_seq, ARG_path, g1, left_seq_list, right_seq_list, all_paths, output_path, gene_cov, radius):
     
-    if not os.path.exists(f"{OUTPUT_PATH}result_contexts_cov_{GENE_COV}_radius_{RADIUS}/"):
-        os.makedirs(f"{OUTPUT_PATH}result_contexts_cov_{GENE_COV}_radius_{RADIUS}/")
+    if not os.path.exists(f"{output_path}result_contexts_cov_{gene_cov}_radius_{radius}/"):
+        os.makedirs(f"{output_path}result_contexts_cov_{gene_cov}_radius_{radius}/")
         
-    with open(f"{OUTPUT_PATH}result_contexts_cov_{GENE_COV}_radius_{RADIUS}/left_seq.fasta", "a") as file:
+    with open(f"{output_path}result_contexts_cov_{gene_cov}_radius_{radius}/left_seq.fasta", "a") as file:
         count = 0
         for seq in left_seq_list:
             file.write('>' + ARG + '_' + "_".join(ARG_path) + '_' + str(count) + '\n')
             count += 1
             file.write(seq + '\n')
 
-    with open(f"{OUTPUT_PATH}result_contexts_cov_{GENE_COV}_radius_{RADIUS}/right_seq.fasta", "a") as file:
+    with open(f"{output_path}result_contexts_cov_{gene_cov}_radius_{radius}/right_seq.fasta", "a") as file:
         count = 0
         for seq in right_seq_list:
             file.write('>' + ARG + '_' + "_".join(ARG_path) + '_' + str(count) + '\n')
             count += 1
             file.write(seq + '\n')
     
-    with open(f"{OUTPUT_PATH}result_contexts_cov_{GENE_COV}_radius_{RADIUS}/contexts.txt", 'a') as file:
+    with open(f"{output_path}result_contexts_cov_{gene_cov}_radius_{radius}/contexts.txt", 'a') as file:
         count = 0
         for path in all_paths:
             file.write('>' + ARG + '_' + "_".join(ARG_path) + '_' + str(count) + '\n')
@@ -57,12 +56,12 @@ def write_results(ARG, ARG_seq, ARG_path, g1, left_seq_list, right_seq_list, all
             file.writelines("->".join(path))
             file.write('\n')
     
-    with open(f"{OUTPUT_PATH}result_contexts_cov_{GENE_COV}_radius_{RADIUS}/ARG_seq.fasta", 'a') as file:
+    with open(f"{output_path}result_contexts_cov_{gene_cov}_radius_{radius}/ARG_seq.fasta", 'a') as file:
         file.write('>' + ARG + '_' + "_".join(ARG_path) + '\n')
         file.write(ARG_seq + '\n')
 
 
-def extract_merge_seq(all_paths, ARG, start_node, end_node, g1, ARG_dict, ARG_path):
+def extract_merge_seq(all_paths, ARG, start_node, end_node, g1, ARG_dict, ARG_path, output_path, gene_cov, radius, overlap, min_context_len):
     left_list = []
     right_list = []
     
@@ -104,8 +103,8 @@ def extract_merge_seq(all_paths, ARG, start_node, end_node, g1, ARG_dict, ARG_pa
     right_seq_list = []
     left_seq_list = []
     
-    if len(rem_seq_right) >= RADIUS:
-        rem_seq_right = rem_seq_right[0:RADIUS]
+    if len(rem_seq_right) >= radius:
+        rem_seq_right = rem_seq_right[0:radius]
         right_seq_list.append(rem_seq_right)
     else:
         if right_list:
@@ -113,20 +112,20 @@ def extract_merge_seq(all_paths, ARG, start_node, end_node, g1, ARG_dict, ARG_pa
                 right_seq = rem_seq_right
                 for node in right_nodes:
                     seq2 = g1.nodes[node]['sequence']
-                    # what if right_seq < OVERLAP
-                    right_seq = right_seq + seq2[OVERLAP:]
+                    # what if right_seq < overlap
+                    right_seq = right_seq + seq2[overlap:]
 
-                    if len(right_seq) >= RADIUS:
-                        right_seq = right_seq[0:RADIUS]
+                    if len(right_seq) >= radius:
+                        right_seq = right_seq[0:radius]
                         break
-                if len(right_seq) >= MIN_CONTEXT_LEN:
+                if len(right_seq) >= min_context_len:
                     right_seq_list.append(right_seq)
         else:
-            if len(rem_seq_right) >= MIN_CONTEXT_LEN:
+            if len(rem_seq_right) >= min_context_len:
                 right_seq_list.append(rem_seq_right)
             
-    if len(rem_seq_left) >= RADIUS:
-        rem_seq_left = rem_seq_left[-RADIUS:]
+    if len(rem_seq_left) >= radius:
+        rem_seq_left = rem_seq_left[-radius:]
         left_seq_list.append(rem_seq_left)
     else:
         if left_list:
@@ -136,15 +135,15 @@ def extract_merge_seq(all_paths, ARG, start_node, end_node, g1, ARG_dict, ARG_pa
                 for node in reversed(left_nodes):
                     seq2 = g1.nodes[node]['sequence']
 
-                    left_seq = seq2[:-OVERLAP] + left_seq
+                    left_seq = seq2[:-overlap] + left_seq
 
-                    if len(left_seq) >= RADIUS:
-                        left_seq = left_seq[-RADIUS:]
+                    if len(left_seq) >= radius:
+                        left_seq = left_seq[-radius:]
                         break
-                if len(left_seq) >= MIN_CONTEXT_LEN:
+                if len(left_seq) >= min_context_len:
                     left_seq_list.append(left_seq)
         else:
-            if len(rem_seq_left) >= MIN_CONTEXT_LEN:
+            if len(rem_seq_left) >= min_context_len:
                 left_seq_list.append(rem_seq_left)
     
     # ARG_path = all_paths[0][all_paths[0].index(start_node) : all_paths[0].index(end_node) + 1]
@@ -164,12 +163,12 @@ def extract_merge_seq(all_paths, ARG, start_node, end_node, g1, ARG_dict, ARG_pa
         elif node == end_node:
             ARG_seq += g1.nodes[node]['sequence'][:end_pos]
         else:
-            ARG_seq += g1.nodes[node]['sequence'][OVERLAP:]
+            ARG_seq += g1.nodes[node]['sequence'][overlap:]
         
-    write_results(ARG, ARG_seq, ARG_path, g1, left_seq_list, right_seq_list, all_paths)
+    write_results(ARG, ARG_seq, ARG_path, g1, left_seq_list, right_seq_list, all_paths, output_path, gene_cov, radius)
 
 
-def extract_ARG_contexts(g1, ARG_dict, ARG_path_dict, radius, overlap):
+def extract_ARG_contexts(g1, ARG_dict, ARG_path_dict, radius, overlap, output_path, gene_cov, min_context_len):
     mapping = {"+": "-", "-": "+"}
     for ARG, paths in ARG_path_dict.items():
         for path in paths:
@@ -199,4 +198,4 @@ def extract_ARG_contexts(g1, ARG_dict, ARG_path_dict, radius, overlap):
             else:
                 print('No paths found for ', ARG, path)
                 all_paths.append(path)
-            extract_merge_seq(all_paths, ARG, start_node, end_node, g1, ARG_dict, path)
+            extract_merge_seq(all_paths, ARG, start_node, end_node, g1, ARG_dict, path, output_path, gene_cov, radius, overlap, min_context_len)

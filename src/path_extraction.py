@@ -2,10 +2,9 @@
 
 from collections import defaultdict
 from Bio import SeqIO
-from src.config import OVERLAP, MAX_GAP_LENGTH, MAX_GAP_NODE, GENE_COV, GROUP_COV_RATIO, MAX_NODE_DIST
 import networkx as nx 
 
-def make_connected_groups(nodes, g1, total_gene_len):
+def make_connected_groups(nodes, g1, total_gene_len, group_cov_ratio, max_node_dist):
     """
     makes groups with nodes(representing one ARG) which are connected with one another
     checks coverage for each group
@@ -26,7 +25,7 @@ def make_connected_groups(nodes, g1, total_gene_len):
             if node1[:-1] != node2[:-1] and nx.has_path(g1, node1, node2):
                 try:
                     dist = nx.shortest_path_length(g1, source=node1, target=node2)
-                    if dist <= MAX_NODE_DIST:
+                    if dist <= max_node_dist:
                         is_isolated = False
                         group1 = group_assignments.get(node1)
                         group2 = group_assignments.get(node2)
@@ -64,7 +63,7 @@ def make_connected_groups(nodes, g1, total_gene_len):
         covered_region = 0
         for node in node_group:
             covered_region += nodes[node][1] - nodes[node][0]
-        if (covered_region / total_gene_len) >= GROUP_COV_RATIO:
+        if (covered_region / total_gene_len) >= group_cov_ratio:
             # node_groups.pop(group_id)
             filter_node_groups[group_id] = node_group
     print('filtered node groups ', filter_node_groups)
@@ -74,7 +73,7 @@ def make_connected_groups(nodes, g1, total_gene_len):
 
     return filtered_dict, isolated_nodes
 
-def get_gene_path(ARG, nodes, g1, ref_ARGDB_dict, min_length_dict, overlap, max_gap_length, gene_cov, max_gap_node):
+def get_gene_path(ARG, nodes, g1, ref_ARGDB_dict, min_length_dict, overlap, max_gap_length, gene_cov, max_gap_node, group_cov_ratio, max_node_dist):
 
     """
     extracts the paths representing each ARG in the assembly graph and additional coverage info
@@ -93,7 +92,7 @@ def get_gene_path(ARG, nodes, g1, ref_ARGDB_dict, min_length_dict, overlap, max_
     # gene_len = len(ref_ARGDB_dict[ARG].seq)*3
     gene_len = (min_length_dict[ARG])*3
     print('gene len ', gene_len)
-    nodes, isolated_nodes = make_connected_groups(nodes, g1, gene_len)
+    nodes, isolated_nodes = make_connected_groups(nodes, g1, gene_len, group_cov_ratio, max_node_dist)
     # isolated_nodes = find_isolated_nodes(g1, nodes)
     print('isolated nodes ', isolated_nodes)
 
@@ -115,21 +114,21 @@ def get_gene_path(ARG, nodes, g1, ref_ARGDB_dict, min_length_dict, overlap, max_
                 if neighbor not in current_path:
                     if neighbor in nodes: # neighbor is ARG
                     # if neighbor in node_groups[group_id]:
-                        gap_len = current_gap_len + nodes[neighbor][0] - OVERLAP
+                        gap_len = current_gap_len + nodes[neighbor][0] - overlap
                         # if gap_len < MAX_GAP_LENGTH and target_nodes[last_ARG_node][1] <= target_nodes[neighbor][0]:
-                        if gap_len < MAX_GAP_LENGTH:
+                        if gap_len < max_gap_length:
                             new_path = current_path + [neighbor]
                             covered_len += abs(nodes[neighbor][0] - nodes[neighbor][1])
                             dfs(new_path, (g1.nodes[neighbor]['length'] - nodes[neighbor][1]), covered_len, neighbor, 0)
                             
                     else: # neighbor is not ARG
-                        gap_len = current_gap_len + g1.nodes[neighbor]['length'] - OVERLAP
-                        if gap_len < MAX_GAP_LENGTH and gap_node_count < MAX_GAP_NODE:
+                        gap_len = current_gap_len + g1.nodes[neighbor]['length'] - overlap
+                        if gap_len < max_gap_length and gap_node_count < max_gap_node:
                             new_path = current_path + [neighbor]
                             dfs(new_path, gap_len, covered_len, last_ARG_node, gap_node_count + 1)
             
         if current_path[0] in nodes and current_path[-1] in nodes and not any(set(current_path) <= set(p) for p in paths):
-            if covered_len / gene_len >= GENE_COV:
+            if covered_len / gene_len >= gene_cov:
                 paths.append(current_path)
                 covered_len_dict[tuple(current_path)] = covered_len
                 existing_node_set.update([node[:-1] for node in current_path])
@@ -157,7 +156,7 @@ def get_gene_path(ARG, nodes, g1, ref_ARGDB_dict, min_length_dict, overlap, max_
 
     return ARG, filtered_unique_paths, additional_path_info
 
-def extract_ARG_paths_seq_gap(g1, ARG_dict, db_fasta, overlap, gene_cov):
+def extract_ARG_paths_seq_gap(g1, ARG_dict, db_fasta, overlap, gene_cov, max_gap_length, max_gap_node, group_cov_ratio, max_node_dist):
     """
     Extracts ARG paths from the graph.
     """
@@ -176,7 +175,7 @@ def extract_ARG_paths_seq_gap(g1, ARG_dict, db_fasta, overlap, gene_cov):
     for ARG, nodes in ARG_dict.items():
         # Call get_gene_path and update ARG_path_dict and ARG_path_list_2
         # Example (assuming get_gene_path is implemented):
-        ARG, paths, additional_info = get_gene_path(ARG, nodes, g1, ref_ARGDB_dict, min_length_dict, overlap, MAX_GAP_LENGTH, gene_cov, MAX_GAP_NODE)
+        ARG, paths, additional_info = get_gene_path(ARG, nodes, g1, ref_ARGDB_dict, min_length_dict, overlap, max_gap_length, gene_cov, max_gap_node, group_cov_ratio, max_node_dist)
         ARG_path_dict[ARG] = paths
         ARG_path_list_2.extend(additional_info)
         # Write paths to file or process further if needed
