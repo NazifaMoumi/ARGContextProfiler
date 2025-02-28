@@ -4,6 +4,7 @@ __pycache__/
 data/
 results/
 results2/
+results3/
 
 slurm-*.out
 *.log

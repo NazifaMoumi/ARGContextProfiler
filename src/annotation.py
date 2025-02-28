@@ -11,7 +11,7 @@ def annotate_ARG(output_path):
     # Run diamond blastx command
     diamond_cmd = (
         f"diamond blastx -d {output_path}query_db.dmnd -q {output_path}generated_seq_file.fasta "
-        f"--id 80 > {output_path}diamond_out /dev/null 2>&1"
+        f"--id 80 > {output_path}diamond_out 2>&1"
     )
     os.system(diamond_cmd)
     

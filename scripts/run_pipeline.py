@@ -36,7 +36,7 @@ def parse_arguments() -> PipelineConfig:
     parser = argparse.ArgumentParser(description="Run ARG Context Pipeline")
     
     # File paths and directories
-    parser.add_argument("--graph", type=existing_path, default=default_config.GRAPH_FILE_PATH,
+    parser.add_argument("--graph", default=default_config.GRAPH_FILE_PATH,
                         help="Path to the assembly graph in .fastg format")
     parser.add_argument("--db_fasta", type=existing_path, default=default_config.DB_PATH_FASTA,
                         help="Path to the reference DB FASTA file")
@@ -84,6 +84,29 @@ def parse_arguments() -> PipelineConfig:
         group_cov_ratio=args.group_cov_ratio,
         assembler=args.assembler
     )
+
+def run_assembly(cfg: PipelineConfig):
+    """
+    Checks if the input graph exists.
+    If not, runs metaspades to generate the assembly graph.
+    Updates cfg.graph to point to the new graph file.
+    """
+    if not os.path.exists(cfg.graph):
+        print("Input graph not found. Running metaspades assembly to generate the graph...")
+        assembly_dir = os.path.join(cfg.output, "assemblies")
+        if not os.path.exists(assembly_dir):
+            os.makedirs(assembly_dir)
+        assembly_cmd = (
+            f"metaspades.py -o {assembly_dir} -1 {cfg.read1} -2 {cfg.read2} "
+            f"--only-assembler -t 64 -m 400"
+        )
+        subprocess.run(assembly_cmd, shell=True, check=True, stdout=subprocess.DEVNULL)
+        new_graph = os.path.join(assembly_dir, "assembly_graph.fastg")
+        if not os.path.exists(new_graph):
+            raise FileNotFoundError("Assembly did not produce the expected graph file.")
+        else:
+            print(f"Assembly completed. New graph file located at {new_graph}")
+            cfg.graph = new_graph
 
 def build_diamond_db(cfg: PipelineConfig):
     """Create a DIAMOND database from the given FASTA file."""
@@ -197,29 +220,33 @@ def main():
     print('Input graph:', args.graph)
     print('Output path:', args.output)
 
-    # if not os.path.exists(args.output):
-    #     os.makedirs(args.output)
+    if not os.path.exists(args.output):
+        os.makedirs(args.output)
+    
+    run_assembly(args)
 
-    # build_diamond_db(args)
+    build_diamond_db(args)
 
-    # g = create_assembly_graph(args)
+    g = create_assembly_graph(args)
 
-    # ARG_dict = run_annotation(args)
+    ARG_dict = run_annotation(args)
 
-    # clean_old_results(args)
+    clean_old_results(args)
 
-    # # Extract ARG paths
-    # ARG_path_dict = run_path_extraction(g, ARG_dict, args)
+    # Extract ARG paths
+    ARG_path_dict = run_path_extraction(g, ARG_dict, args)
 
-    # # Extract genomic contexts
-    # run_context_extraction(g, ARG_dict, ARG_path_dict, args)
+    # Extract genomic contexts
+    run_context_extraction(g, ARG_dict, ARG_path_dict, args)
 
-    # cluster_contexts(args)
+    cluster_contexts(args)
 
-    # # Map reads for refinement
-    # map_reads(args)
+    # Map reads for refinement
+    map_reads(args)
 
     context_refinement.run_read_analysis(args)
+
+    print(f"ARGContextProfiler completed successfully!\nOutput located at {args.output}")
 
 if __name__ == '__main__':
     main()
