@@ -1,13 +1,17 @@
 __pycache__/
 *.py[cod]
+.nextflow
 
 data/
 results/
 results2/
 results3/
+CAMI_low_results/
+work/
 
 slurm-*.out
 *.log
+*.log.*
 
 ARGCP_job.sh
 

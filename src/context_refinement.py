@@ -11,8 +11,8 @@ import collections
 # You can define or import these from config, if needed:
 BOUNDARY = 500
 
-def calculate_median_dev(cfg):
-    samfile = pysam.AlignmentFile(cfg + 'read_mapping.bam', "rb")
+def calculate_median_dev(read_mapping):
+    samfile = pysam.AlignmentFile(read_mapping, "rb")
     
     all_reads = samfile.fetch()
     size_freq = collections.defaultdict(int)
@@ -29,15 +29,15 @@ def calculate_median_dev(cfg):
     mad_size = 1.4826 * np.median(residuals)
     return median_size, mad_size
 
-def read_pair_consistency(cfg):
+def read_pair_consistency(read_mapping):
     """
     Analyzes read pair consistency using 'read_mapping.bam' in cfg.output.
     Writes 'read_pair_consistency_scores.csv' to cfg.output.
     """
-    bam_path = os.path.join(cfg, 'read_mapping.bam')
-    samfile = pysam.AlignmentFile(bam_path, 'rb')
+    # bam_path = os.path.join(cfg, 'read_mapping.bam')
+    samfile = pysam.AlignmentFile(read_mapping, 'rb')
 
-    median_size, mad_size = calculate_median_dev(cfg)
+    median_size, mad_size = calculate_median_dev(read_mapping)
     references = samfile.references
     lengths = samfile.lengths
 
@@ -173,17 +173,17 @@ def read_pair_consistency(cfg):
         'discordant_size_count', 'discordant_loc_count', 'length'
     ]]
 
-    out_csv = os.path.join(cfg, 'read_pair_consistency_scores.csv')
-    data.to_csv(out_csv, index=False)
+    # out_csv = os.path.join(cfg, 'read_pair_consistency_scores.csv')
+    data.to_csv('read_pair_consistency_scores.csv', index=False)
     return data
 
-def read_coverage_uniformity(cfg):
+def read_coverage_uniformity(read_mapping):
     """
     Analyzes coverage uniformity using 'read_mapping.bam' in cfg.output.
     Writes 'read_coverage_uniformity_scores.csv' to cfg.output.
     """
-    bam_path = os.path.join(cfg, 'read_mapping.bam')
-    samfile = pysam.AlignmentFile(bam_path, 'rb')
+    # bam_path = os.path.join(cfg, 'read_mapping.bam')
+    samfile = pysam.AlignmentFile(read_mapping, 'rb')
     
     references = samfile.references
     lengths = samfile.lengths
@@ -267,22 +267,22 @@ def read_coverage_uniformity(cfg):
         'normalized_fragment_coverage', 'normalized_fragment_deviation'
     ]]
 
-    out_csv2 = os.path.join(cfg, 'read_coverage_uniformity_scores.csv')
-    data.to_csv(out_csv2, index=False)
+    # out_csv2 = os.path.join(cfg, 'read_coverage_uniformity_scores.csv')
+    data.to_csv('read_coverage_uniformity_scores.csv', index=False)
     return data
 
-def filter_contexts_read_outliers(cfg):
+def filter_contexts_read_outliers(read_mapping, rep_fasta):
     """
     Merges read_pair_consistency_scores.csv and read_coverage_uniformity_scores.csv,
     identifies outliers, and filters them out from 
     'whole_context_with_length_clustered_rep_seq.fasta'.
     """
-    read_pair_file = os.path.join(cfg, 'read_pair_consistency_scores.csv')
-    coverage_file = os.path.join(cfg, 'read_coverage_uniformity_scores.csv')
-    merged_out = os.path.join(cfg, 'all_read_scores.csv')
+    # read_pair_file = os.path.join(cfg, 'read_pair_consistency_scores.csv')
+    # coverage_file = os.path.join(cfg, 'read_coverage_uniformity_scores.csv')
+    merged_out = 'all_read_scores.csv'
 
-    df_read_pair = pd.read_csv(read_pair_file)
-    df_read_coverage = pd.read_csv(coverage_file)
+    df_read_pair = pd.read_csv('read_pair_consistency_scores.csv')
+    df_read_coverage = pd.read_csv('read_coverage_uniformity_scores.csv')
 
     merged_df = pd.merge(df_read_pair, df_read_coverage, on=['group_id','left','right'], how='outer')
     merged_df.to_csv(merged_out, index=False)
@@ -331,8 +331,7 @@ def filter_contexts_read_outliers(cfg):
         remove_substrings = set()
 
     # Filter out outliers from the FASTA
-    rep_fasta = os.path.join(cfg, "whole_context_with_length_clustered_rep_seq.fasta")
-    filtered_fasta = os.path.join(cfg, "whole_context_with_length_clustered_filtered.fasta")
+    filtered_fasta = "whole_context_with_length_clustered_filtered.fasta"
     
     if not os.path.exists(rep_fasta):
         print(f"Warning: {rep_fasta} does not exist. Cannot filter contexts.")
@@ -349,21 +348,21 @@ def filter_contexts_read_outliers(cfg):
 
     print("Filtered contexts written to:", filtered_fasta)
 
-def run_read_analysis(cfg):
+def run_read_analysis(read_mapping, rep_fasta):
     """
     Runs all three read analysis steps in sequence:
       1. read_pair_consistency
       2. read_coverage_uniformity
       3. filter_contexts_read_outliers
     """
-    read_mapping_path = f"{cfg.output}result_contexts_cov_{cfg.gene_cov}_radius_{cfg.radius}/"
+    # read_mapping_path = f"{cfg.output}result_contexts_cov_{cfg.gene_cov}_radius_{cfg.radius}/"
     print("Running read pair consistency analysis...")
-    read_pair_consistency(read_mapping_path)
+    read_pair_consistency(read_mapping)
 
     print("Analyzing coverage uniformity...")
-    read_coverage_uniformity(read_mapping_path)
+    read_coverage_uniformity(read_mapping)
 
     print("Filtering outlier contexts based on read scores...")
-    filter_contexts_read_outliers(read_mapping_path)
+    filter_contexts_read_outliers(read_mapping, rep_fasta)
 
     print("Read analysis steps completed.")

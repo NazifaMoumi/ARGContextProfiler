@@ -13,7 +13,8 @@ def create_seq_file_from_graph(formatted_graph_path, output_path):
                     key_function=lambda record: (record.id.split('_')[1] + ('-' if "'" in record.id.split(':')[0] else '+')))
     record_dict = {key: str(value.seq) for key, value in record_dict.items()}
     records = [SeqRecord(Seq(seq), id=seq_id, description="") for seq_id, seq in record_dict.items()]
-    out_file = os.path.join(output_path, 'generated_seq_file.fasta')
+    # out_file = os.path.join(output_path, 'generated_seq_file.fasta')
+    out_file = os.path.join('generated_seq_file.fasta')
     with open(out_file, "w") as output_handle:
         SeqIO.write(records, output_handle, "fasta")
     return record_dict

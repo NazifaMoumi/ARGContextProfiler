@@ -3,26 +3,26 @@ import os
 import pandas as pd
 from src.diamond_filter import filter_diamond_out
 
-def annotate_ARG(output_path):
+def annotate_ARG(query_db, seq_file):
     """
     Runs diamond blastx against the deepARG-DB, filters the output, 
     and creates ARG_dict and ARG_target_dict from the filtered results.
     """
     # Run diamond blastx command
     diamond_cmd = (
-        f"diamond blastx -d {output_path}query_db.dmnd -q {output_path}generated_seq_file.fasta "
-        f"--id 80 > {output_path}diamond_out 2>&1"
+        f"diamond blastx -d {query_db} -q {seq_file} "
+        f"--id 80 > diamond_out 2>&1"
     )
     os.system(diamond_cmd)
     
     # Filter the diamond output
-    filter_diamond_out(f"{output_path}diamond_out", f"{output_path}filtered_diamond_out.tsv")  # This function should read diamond_out and write filtered_diamond_out.tsv
+    filter_diamond_out(f"diamond_out", f"filtered_diamond_out.tsv")  # This function should read diamond_out and write filtered_diamond_out.tsv
 
     # Read the filtered diamond output
-    filtered_file = os.path.join(output_path, "filtered_diamond_out.tsv")
+    # filtered_file = os.path.join(output_path, "filtered_diamond_out.tsv")
     
     try:
-        df = pd.read_csv(filtered_file, delimiter='\t', header=None)
+        df = pd.read_csv("filtered_diamond_out.tsv", delimiter='\t', header=None)
     except pd.errors.EmptyDataError:
         print(f"No alignment found with the query gene(s). Exiting...")
         sys.exit(1)
@@ -46,5 +46,5 @@ def annotate_ARG(output_path):
         ) for node in group[0].unique()
     }).to_dict()
     
-    os.remove(f"{output_path}query_db.dmnd")
+    # os.remove(f"{output_path}query_db.dmnd")
     return ARG_dict, ARG_target_dict
